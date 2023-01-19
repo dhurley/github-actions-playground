@@ -27,6 +27,7 @@ jobs:
           echo "${{ github.base_ref }}"
           echo "${{ github.head_ref }}"
           echo "${{ github.event.pull_request.base.ref }}"
+          echo "${{ github.event.pull_request.head.repo.full_name }}"
           ls -ltr
       - uses: actions/setup-node@v3
       - name: Create Draft Release
