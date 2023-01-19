@@ -21,13 +21,14 @@ jobs:
           fetch-depth: 0
       - name: Echo Stuff
         run: |
-          echo "${{github.ref}}"
-          echo "${{github.ref_name}}"
-          echo "${{github.ref_type}}"
+          echo "${{ github.ref }}"
+          echo "${{ github.ref_name }}"
+          echo "${{ github.ref_type }}"
           echo "${{ github.base_ref }}"
           echo "${{ github.head_ref }}"
           echo "${{ github.event.pull_request.base.ref }}"
           echo "${{ github.event.pull_request.head.repo.full_name }}"
+          echo "${{ github.repository }}"
           ls -ltr
       - uses: actions/setup-node@v3
       - name: Create Draft Release
