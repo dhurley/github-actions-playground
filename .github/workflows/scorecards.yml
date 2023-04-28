@@ -45,6 +45,7 @@ jobs:
             sigstore-tuf-root.storage.googleapis.com:443
             oauth2.sigstore.dev:443
             rekor.sigstore.dev:443
+            api.securityscorecards.dev:443
 
       - name: "Checkout code"
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
