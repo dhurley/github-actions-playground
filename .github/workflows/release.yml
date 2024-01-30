@@ -83,7 +83,6 @@ jobs:
                   name: version,
                   body: release_notes.data.body,
                   draft: true,
-                  make_latest: false,
                 }))
                 
                 console.log(`Release created: ${release.data.html_url}`)
