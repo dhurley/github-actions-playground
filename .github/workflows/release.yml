@@ -24,7 +24,7 @@ jobs:
       - name: Get Latest Tag
         if: "!github.event.pull_request.head.repo.fork"
         run: |
-            echo "LATEST_VERSION=$(git describe --tags HEAD)" >> $GITHUB_ENV
+            echo "LATEST_VERSION=$(git describe --tags --abbrev=0 HEAD)" >> $GITHUB_ENV
       - name: Create Draft Release
         uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6.4.1
         if: "!github.event.pull_request.head.repo.fork"
@@ -32,12 +32,18 @@ jobs:
         with:
           script: |
             const ref = context.ref.split("/")[2]
-            const version = ref.split("-")[1]
+            const version = "v" + ref.split("-")[1]
             console.log(`The release version is ${version}`)
 
-            latest_version = process.env.LATEST_VERSION
+            const latest_version = process.env.LATEST_VERSION
             
-            const latest_release = (await github.rest.repos.getRelease({
+            const releases = (await github.rest.repos.listReleases({
+              owner: context.payload.repository.owner.login,
+              repo: context.payload.repository.name,
+              per_page: 100,
+            })).data
+
+            const latest_release = (await github.rest.repos.getReleaseByTag({
               owner: context.payload.repository.owner.login,
               repo: context.payload.repository.name,
               tag: latest_version,
@@ -105,3 +111,22 @@ jobs:
           zip test.zip README.md
           gh release upload --clobber ${{env.VERSION}} \
             $(find ./ -type f \( -name "*.zip" \))
+      - name: Publish Github Release
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const {RELEASE_ID, VERSION} = process.env
+            
+            let make_latest = false
+            if (VERSION.startsWith("v3.")) {
+              make_latest = true
+            }
+
+            const release = (await github.rest.repos.updateRelease({
+              owner: context.payload.repository.owner.login,
+              repo: context.payload.repository.name,
+              release_id: `${RELEASE_ID}`,
+              draft: false,
+              make_latest: make_latest,
+            }))
+            console.log(`Release published: ${release.data.html_url}`)
