@@ -24,7 +24,7 @@ jobs:
       - name: Get Latest Tag
         if: "!github.event.pull_request.head.repo.fork"
         run: |
-            echo "LATEST_VERSION=v$(git describe --tags --abbrev=0 HEAD)" >> $GITHUB_ENV
+            echo "LATEST_VERSION=$(git describe --tags --abbrev=0 HEAD)" >> $GITHUB_ENV
       - name: Create Draft Release
         uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6.4.1
         if: "!github.event.pull_request.head.repo.fork"
@@ -32,7 +32,7 @@ jobs:
         with:
           script: |
             const ref = context.ref.split("/")[2]
-            const version = ref.split("-")[1]
+            const version = "v" + ref.split("-")[1]
             console.log(`The release version is ${version}`)
 
             const latest_version = process.env.LATEST_VERSION
