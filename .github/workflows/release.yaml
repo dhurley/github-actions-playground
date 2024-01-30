@@ -1,0 +1,107 @@
+name: Release
+
+on:
+    workflow_dispatch:
+    workflow_call:
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@6b3083af2869dc3314a0257a42f4af696cc79ba3 # v2.3.1
+        with:
+          disable-sudo: true
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
+            uploads.github.com:443
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+        with:
+          fetch-depth: 0
+      - name: Get Latest Tag
+        if: "!github.event.pull_request.head.repo.fork"
+        run: |
+            echo "LATEST_VERSION=$(git describe --tags HEAD)" >> $GITHUB_ENV
+      - name: Create Draft Release
+        uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6.4.1
+        if: "!github.event.pull_request.head.repo.fork"
+        id: release
+        with:
+          script: |
+            const ref = context.ref.split("/")[2]
+            const version = ref.split("-")[1]
+            console.log(`The release version is ${version}`)
+
+            latest_version = process.env.LATEST_VERSION
+            
+            const latest_release = (await github.rest.repos.getRelease({
+              owner: context.payload.repository.owner.login,
+              repo: context.payload.repository.name,
+              tag: latest_version,
+            })).data.tag_name
+            
+            console.log(`The latest release was ${latest_release}`)
+
+            if (latest_release === version) {
+                core.setFailed(`A published release already exists for ${latest_release}`)
+            } else {
+                const draft = releases.find((r) => r.draft && r.tag_name === version)
+                const draft_found = !(draft === undefined)
+                
+                let release
+                if (draft_found){
+                  console.log("Draft release already exists. Deleting current draft release and recreating it")
+                  release = (await github.rest.repos.deleteRelease({
+                      owner: context.payload.repository.owner.login,
+                      repo: context.payload.repository.name,
+                      release_id: draft.id,
+                  }))
+                }
+                
+                const release_notes = (await github.rest.repos.generateReleaseNotes({
+                  owner: context.payload.repository.owner.login,
+                  repo: context.payload.repository.name,
+                  tag_name: version,
+                  previous_tag_name: latest_release,
+                  target_commitish: ref,
+                }))
+                
+                release = (await github.rest.repos.createRelease({
+                  owner: context.payload.repository.owner.login,
+                  repo: context.payload.repository.name,
+                  tag_name: version,
+                  target_commitish: ref,
+                  name: version,
+                  body: release_notes.data.body,
+                  draft: true,
+                }))
+                
+                console.log(`Release created: ${release.data.html_url}`)
+                console.log(`Release ID: ${release.data.id}`)
+                console.log(`Release notes: ${release_notes.data.body}`)
+                console.log(`Release Upload URL: ${release.data.upload_url}`)
+
+                return {
+                  version: version,
+                  release_id: release.data.id,
+                  release_upload_url: release.data.upload_url,
+                }
+            }
+      - name: Set Environment Variables
+        if: "!github.event.pull_request.head.repo.fork"
+        run: |
+          echo "${{steps.release.outputs.result}}"
+          echo "VERSION=$(echo '${{steps.release.outputs.result}}' | jq -r '.version')" >> $GITHUB_ENV
+          echo "RELEASE_ID=$(echo '${{steps.release.outputs.result}}' | jq -r '.release_id')" >> $GITHUB_ENV
+          echo "RELEASE_UPLOAD_URL=$(echo '${{steps.release.outputs.result}}' | jq -r '.release_upload_url')" >> $GITHUB_ENV
+      - name: Upload Release Assets
+        if: "!github.event.pull_request.head.repo.fork"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          zip test.zip README.md
+          gh release upload --clobber ${{env.VERSION}} \
+            $(find ./ -type f \( -name "*.zip" \))
