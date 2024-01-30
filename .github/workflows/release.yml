@@ -118,7 +118,7 @@ jobs:
             const {RELEASE_ID, VERSION} = process.env
             
             let make_latest = false
-            if VERSION.startsWith("v3.") {
+            if (VERSION.startsWith("v3.")) {
               make_latest = true
             }
 
