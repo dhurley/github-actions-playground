@@ -2,12 +2,6 @@ name: Release
 
 on:
     workflow_dispatch:
-      inputs:
-        version:
-          description: 'Version to publish'
-          required: true
-          type: string
-          default: ''
     workflow_call:
 
 jobs:
@@ -31,12 +25,10 @@ jobs:
         uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6.4.1
         if: "!github.event.pull_request.head.repo.fork"
         id: release
-        env:
-            VERSION: ${{ inputs.version }}
         with:
           script: |
             const ref = context.ref.split("/")[2]
-            const version = process.env.VERSION
+            const version = ref.split("-")[1]
             console.log(`The release version is ${version}`)
             
             const releases = (await github.rest.repos.listReleases({
